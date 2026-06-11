@@ -83,6 +83,7 @@ jobs:
           generate_release_notes: true
 
       - name: Publish APK repository (GitHub Pages)
+        continue-on-error: true
         uses: peaceiris/actions-gh-pages@v4
         with:
           publish_branch: gh-pages
