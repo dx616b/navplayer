@@ -55,7 +55,8 @@ jobs:
           EOF
 
           mkdir -p apk-repo
-          cp "$APK" NavPlayer-latest.apk update.json apk-repo/
+          cp "$APK" "apk-repo/NavPlayer-${VERSION}.apk"
+          cp NavPlayer-latest.apk update.json apk-repo/
           cat > apk-repo/index.html <<EOF
           <!DOCTYPE html>
           <html lang="en">
@@ -72,7 +73,6 @@ jobs:
           </body>
           </html>
           EOF
-          cp apk-repo/index.html index.html
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -82,32 +82,18 @@ jobs:
             update.json
           generate_release_notes: true
 
-      - name: Publish APK repository (GitHub Pages)
-        continue-on-error: true
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload APK repository artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          publish_branch: gh-pages
-          publish_dir: apk-repo
-          commit_message: "APK repo: ${{ github.ref_name }}"
+          path: apk-repo
 
-      - name: Mirror to separate APK repository
-        if: ${{ vars.APK_MIRROR_REPO != '' }}
-        env:
-          APK_MIRROR_REPO: ${{ vars.APK_MIRROR_REPO }}
-          GH_TOKEN: ${{ secrets.APK_MIRROR_TOKEN }}
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/${APK_MIRROR_REPO}.git" mirror
-          cd mirror
-          mkdir -p apks
-          cp "../NavPlayer-${VERSION}.apk" "apks/NavPlayer-${VERSION}.apk"
-          cp "../NavPlayer-${VERSION}.apk" apks/NavPlayer-latest.apk
-          cp ../update.json .
-          cp ../index.html .
-          git add .
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "NavPlayer ${VERSION}"
-          git tag -f "${GITHUB_REF_NAME}"
-          git push origin HEAD:main --force
-          git push origin "${GITHUB_REF_NAME}" --force
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy APK repository to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
