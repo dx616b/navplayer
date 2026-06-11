@@ -1,0 +1,8 @@
+{
+  auto_https disable_redirects
+}
+
+https://:443 {
+  tls internal
+  reverse_proxy navidrome:4533
+}

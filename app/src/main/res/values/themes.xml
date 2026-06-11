@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.NavPlayer" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="android:textColorPrimary">@color/on_surface</item>
+    </style>
+
+    <style name="Widget.NavPlayer.RandomButton" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/primary</item>
+        <item name="android:textColor">@color/on_primary</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="android:minHeight">@dimen/touch_target_min</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="icon">@drawable/ic_shuffle</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">8dp</item>
+        <item name="iconSize">20dp</item>
+        <item name="iconTint">@color/on_primary</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="rippleColor">@color/on_surface</item>
+    </style>
+
+    <style name="Widget.NavPlayer.CompactButton" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:minHeight">@dimen/touch_target_min</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:paddingHorizontal">12dp</item>
+    </style>
+
+    <style name="Widget.NavPlayer.ActionButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:minHeight">52dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+    </style>
+
+    <style name="Widget.NavPlayer.SettingsButton" parent="Widget.NavPlayer.ActionButton">
+        <item name="android:minHeight">56dp</item>
+    </style>
+
+    <style name="Widget.NavPlayer.SeekBar" parent="Widget.AppCompat.SeekBar">
+        <item name="android:minHeight">@dimen/touch_target_min</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+    </style>
+</resources>

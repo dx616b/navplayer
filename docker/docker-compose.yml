@@ -1,0 +1,53 @@
+services:
+  navidrome:
+    image: deluan/navidrome:latest
+    user: "1000:1000"
+    restart: unless-stopped
+    environment:
+      ND_LOGLEVEL: info
+      ND_SCANSCHEDULE: 24h
+      ND_DEVAUTOCREATEADMINPASSWORD: ${NAVIDROME_ADMIN_PASSWORD:-navplayer}
+    volumes:
+      - navidrome_data:/data
+      - ./music:/music:ro
+    networks:
+      - navplayer
+
+  # HTTPS front-end so NavPlayer (HTTPS-only) can talk to the stack.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${NAVIDROME_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - navidrome
+    networks:
+      - navplayer
+
+  # Optional: Android-in-Docker (Linux host with binder/ashmem only — NOT WSL2).
+  # Uncomment on native Linux, then: adb connect localhost:5555 && adb install app.apk
+  # redroid:
+  #   image: redroid/redroid:12.0.0_64only-latest
+  #   privileged: true
+  #   ports:
+  #     - "5555:5555"
+  #   volumes:
+  #     - redroid_data:/data
+  #   command:
+  #     - androidboot.redroid_width=1280
+  #     - androidboot.redroid_height=720
+  #     - androidboot.redroid_dpi=240
+  #   networks:
+  #     - navplayer
+
+volumes:
+  navidrome_data:
+  caddy_data:
+  # redroid_data:
+
+networks:
+  navplayer:
+    driver: bridge

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="touch_target_min">48dp</dimen>
+    <dimen name="touch_target_transport">56dp</dimen>
+    <dimen name="touch_target_play">64dp</dimen>
+    <dimen name="player_bar_min_height">64dp</dimen>
+    <dimen name="playlist_row_min_height">56dp</dimen>
+
+    <dimen name="driving_touch_transport">72dp</dimen>
+    <dimen name="driving_touch_play">80dp</dimen>
+    <dimen name="driving_player_bar_min_height">80dp</dimen>
+    <dimen name="driving_playlist_row_min_height">72dp</dimen>
+    <dimen name="driving_random_min_height">56dp</dimen>
+</resources>

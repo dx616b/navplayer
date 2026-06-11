@@ -1,0 +1,112 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: release-apk
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Package APK repository
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION_CODE="$(grep 'versionCode' app/build.gradle.kts | head -1 | tr -dc '0-9')"
+          APK="NavPlayer-${VERSION}.apk"
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "$APK"
+          cp "$APK" NavPlayer-latest.apk
+          SHA256="$(sha256sum "$APK" | awk '{print $1}')"
+          PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/${APK}"
+
+          cat > update.json <<EOF
+          {
+            "app": "NavPlayer",
+            "package": "com.dean.navplayer",
+            "version": "${VERSION}",
+            "versionCode": ${VERSION_CODE},
+            "tag": "${GITHUB_REF_NAME}",
+            "apk": "NavPlayer-latest.apk",
+            "sha256": "${SHA256}",
+            "downloadUrl": "${RELEASE_URL}",
+            "pagesUrl": "${PAGES_URL}/NavPlayer-latest.apk"
+          }
+          EOF
+
+          mkdir -p apk-repo
+          cp "$APK" NavPlayer-latest.apk update.json apk-repo/
+          cat > apk-repo/index.html <<EOF
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>NavPlayer APK</title>
+          </head>
+          <body>
+            <h1>NavPlayer</h1>
+            <p>Version ${VERSION} (${VERSION_CODE})</p>
+            <p><a href="NavPlayer-latest.apk">Download latest APK</a></p>
+            <p><a href="update.json">update.json</a> (for update tools)</p>
+          </body>
+          </html>
+          EOF
+          cp apk-repo/index.html index.html
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            NavPlayer-*.apk
+            update.json
+          generate_release_notes: true
+
+      - name: Publish APK repository (GitHub Pages)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          publish_branch: gh-pages
+          publish_dir: apk-repo
+          commit_message: "APK repo: ${{ github.ref_name }}"
+
+      - name: Mirror to separate APK repository
+        if: ${{ vars.APK_MIRROR_REPO != '' && secrets.APK_MIRROR_TOKEN != '' }}
+        env:
+          APK_MIRROR_REPO: ${{ vars.APK_MIRROR_REPO }}
+          GH_TOKEN: ${{ secrets.APK_MIRROR_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${APK_MIRROR_REPO}.git" mirror
+          cd mirror
+          mkdir -p apks
+          cp "../NavPlayer-${VERSION}.apk" "apks/NavPlayer-${VERSION}.apk"
+          cp "../NavPlayer-${VERSION}.apk" apks/NavPlayer-latest.apk
+          cp ../update.json .
+          cp ../index.html .
+          git add .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "NavPlayer ${VERSION}"
+          git tag -f "${GITHUB_REF_NAME}"
+          git push origin HEAD:main --force
+          git push origin "${GITHUB_REF_NAME}" --force

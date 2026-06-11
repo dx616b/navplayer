@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NavPlayer</string>
+    <string name="random">Random</string>
+    <string name="playlists">Playlists</string>
+    <string name="settings">Settings</string>
+    <string name="server_url">Server URL (HTTPS)</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="remember_login">Remember login</string>
+    <string name="test_connection">Test connection</string>
+    <string name="save">Save</string>
+    <string name="connection_ok">Connected</string>
+    <string name="connection_failed">Connection failed</string>
+    <string name="loading">Loading…</string>
+    <string name="no_playlists">No playlists</string>
+    <string name="no_library_songs">No songs in library</string>
+    <string name="no_playlist_songs">No songs in playlist</string>
+    <string name="play_pause">Play or pause</string>
+    <string name="previous">Previous</string>
+    <string name="next">Next</string>
+    <string name="cover_art">Cover art</string>
+    <string name="playlist_art">Playlist art</string>
+    <string name="up_next">Up next</string>
+    <string name="close">Close</string>
+    <string name="head_unit">Head unit</string>
+    <string name="auto_start_on_boot">Start on boot</string>
+    <string name="auto_start_on_boot_summary">Open NavPlayer when the head unit powers on</string>
+    <string name="driving_mode">Driving mode</string>
+    <string name="driving_mode_summary">Larger controls and single-column playlists</string>
+    <string name="settings_hidden_hint">Long-press Playlists for settings</string>
+    <string name="notification_channel">Playback</string>
+</resources>
