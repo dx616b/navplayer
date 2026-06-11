@@ -90,7 +90,7 @@ jobs:
           commit_message: "APK repo: ${{ github.ref_name }}"
 
       - name: Mirror to separate APK repository
-        if: ${{ vars.APK_MIRROR_REPO != '' && secrets.APK_MIRROR_TOKEN != '' }}
+        if: ${{ vars.APK_MIRROR_REPO != '' }}
         env:
           APK_MIRROR_REPO: ${{ vars.APK_MIRROR_REPO }}
           GH_TOKEN: ${{ secrets.APK_MIRROR_TOKEN }}
