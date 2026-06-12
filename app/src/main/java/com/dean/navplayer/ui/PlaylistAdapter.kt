@@ -4,19 +4,19 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.dean.navplayer.R
-import com.dean.navplayer.data.CoverArtBitmap
+import com.dean.navplayer.data.CoverArtLoader
 import com.dean.navplayer.data.PlaylistSummary
-import java.io.File
+import com.dean.navplayer.data.ServerConfig
+import com.dean.navplayer.data.SubsonicClient
 import com.dean.navplayer.databinding.ItemPlaylistBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 
 class PlaylistAdapter(
     private val items: List<PlaylistSummary>,
     private val scope: CoroutineScope,
-    private val loadCoverArt: suspend (String) -> File?,
+    private val subsonic: SubsonicClient,
+    private val config: ServerConfig,
     private val rowMinHeightPx: Int,
     private val coverSizePx: Int,
     private val onClick: (PlaylistSummary) -> Unit,
@@ -29,7 +29,8 @@ class PlaylistAdapter(
             item: PlaylistSummary,
             position: Int,
             scope: CoroutineScope,
-            loadCoverArt: suspend (String) -> File?,
+            subsonic: SubsonicClient,
+            config: ServerConfig,
             rowMinHeightPx: Int,
             coverSizePx: Int,
             click: (PlaylistSummary) -> Unit,
@@ -44,14 +45,17 @@ class PlaylistAdapter(
             binding.playlistArt.setImageResource(R.drawable.ic_cover_placeholder)
             binding.root.setOnClickListener { click(item) }
 
-            coverJob = scope.launch {
-                val file = loadCoverArt(item.coverArtId) ?: return@launch
-                if (!isActive || bindingAdapterPosition != position) return@launch
-                val bitmap = CoverArtBitmap.decode(file, coverSizePx, lowMemory = true) ?: return@launch
-                if (bindingAdapterPosition == position) {
-                    binding.playlistArt.setImageBitmap(bitmap)
-                }
-            }
+            coverJob = CoverArtLoader.load(
+                scope,
+                subsonic,
+                config,
+                item.coverArtId,
+                SubsonicClient.COVER_SIZE_THUMB,
+                maxSidePx = coverSizePx,
+                lowMemory = true,
+                isCurrent = { bindingAdapterPosition == position },
+                apply = { binding.playlistArt.setImageBitmap(it) },
+            )
         }
 
         fun clear() {
@@ -65,7 +69,7 @@ class PlaylistAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[position], position, scope, loadCoverArt, rowMinHeightPx, coverSizePx, onClick)
+        holder.bind(items[position], position, scope, subsonic, config, rowMinHeightPx, coverSizePx, onClick)
     }
 
     override fun onViewRecycled(holder: ViewHolder) {

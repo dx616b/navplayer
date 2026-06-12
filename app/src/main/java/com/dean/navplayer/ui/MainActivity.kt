@@ -17,7 +17,7 @@ import androidx.media3.session.MediaController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.dean.navplayer.NavPlayerApp
 import com.dean.navplayer.R
-import com.dean.navplayer.data.CoverArtBitmap
+import com.dean.navplayer.data.CoverArtLoader
 import com.dean.navplayer.data.SubsonicClient
 import com.dean.navplayer.data.Track
 import com.dean.navplayer.databinding.ActivityMainBinding
@@ -36,6 +36,8 @@ class MainActivity : AppCompatActivity() {
     private var controller: MediaController? = null
     private var progressJob: Job? = null
     private var userSeeking = false
+    private var coverLoadJob: Job? = null
+    private var coverMediaId: String? = null
 
     private val settingsLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -230,18 +232,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadCoverForCurrentTrack(mediaId: String?) {
-        if (mediaId.isNullOrBlank()) return
-        val config = app.credentials.load() ?: return
-        lifecycleScope.launch {
-            val file = app.subsonic.getCoverArtFile(
-                config,
-                mediaId,
-                SubsonicClient.COVER_SIZE_PLAYER,
-            ) ?: return@launch
-            val px = resources.getDimensionPixelSize(R.dimen.cover_art_player_bar)
-            val bitmap = CoverArtBitmap.decode(file, px) ?: return@launch
-            binding.coverArt.setImageBitmap(bitmap)
+        coverLoadJob?.cancel()
+        coverMediaId = mediaId
+        if (mediaId.isNullOrBlank()) {
+            binding.coverArt.setImageResource(R.drawable.ic_cover_placeholder)
+            return
         }
+        val config = app.credentials.load() ?: return
+        val px = resources.getDimensionPixelSize(R.dimen.cover_art_player_bar)
+        coverLoadJob = CoverArtLoader.load(
+            lifecycleScope,
+            app.subsonic,
+            config,
+            mediaId,
+            SubsonicClient.COVER_SIZE_PLAYER,
+            maxSidePx = px,
+            isCurrent = { mediaId == coverMediaId },
+            apply = { binding.coverArt.setImageBitmap(it) },
+        )
     }
 
     private fun loadPlaylists() {
@@ -254,9 +262,8 @@ class MainActivity : AppCompatActivity() {
                     binding.playlistList.adapter = PlaylistAdapter(
                         list,
                         lifecycleScope,
-                        { coverId ->
-                            app.subsonic.getCoverArtFile(config, coverId, SubsonicClient.COVER_SIZE_THUMB)
-                        },
+                        app.subsonic,
+                        config,
                         HeadUnitUi.playlistRowMinHeight(this@MainActivity, app.prefs.drivingMode),
                         HeadUnitUi.playlistCoverSizePx(this@MainActivity, app.prefs.drivingMode),
                     ) { playlist ->

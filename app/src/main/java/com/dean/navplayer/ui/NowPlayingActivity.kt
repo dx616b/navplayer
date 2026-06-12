@@ -9,7 +9,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.dean.navplayer.NavPlayerApp
-import com.dean.navplayer.data.CoverArtBitmap
+import com.dean.navplayer.data.CoverArtLoader
 import com.dean.navplayer.data.SubsonicClient
 import com.dean.navplayer.R
 import com.dean.navplayer.databinding.ActivityNowPlayingBinding
@@ -31,6 +31,8 @@ class NowPlayingActivity : AppCompatActivity() {
     private var progressJob: Job? = null
     private var userSeeking = false
     private var queueAdapter: QueueAdapter? = null
+    private var coverLoadJob: Job? = null
+    private var coverMediaId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -216,19 +218,28 @@ class NowPlayingActivity : AppCompatActivity() {
     }
 
     private fun loadCoverForCurrentTrack(mediaId: String?) {
-        if (mediaId.isNullOrBlank()) return
-        val config = app.credentials.load() ?: return
-        lifecycleScope.launch {
-            val file = app.subsonic.getCoverArtFile(
-                config,
-                mediaId,
-                SubsonicClient.COVER_SIZE_LARGE,
-            ) ?: return@launch
-            val px = resources.getDimensionPixelSize(R.dimen.cover_art_now_playing)
-            val bitmap = CoverArtBitmap.decode(file, px) ?: return@launch
-            binding.coverArt.setImageBitmap(bitmap)
-            binding.backgroundArt.setImageBitmap(bitmap)
+        coverLoadJob?.cancel()
+        coverMediaId = mediaId
+        if (mediaId.isNullOrBlank()) {
+            binding.coverArt.setImageResource(R.drawable.ic_cover_placeholder)
+            binding.backgroundArt.setImageResource(R.drawable.ic_cover_placeholder)
+            return
         }
+        val config = app.credentials.load() ?: return
+        val px = resources.getDimensionPixelSize(R.dimen.cover_art_now_playing)
+        coverLoadJob = CoverArtLoader.load(
+            lifecycleScope,
+            app.subsonic,
+            config,
+            mediaId,
+            SubsonicClient.COVER_SIZE_LARGE,
+            maxSidePx = px,
+            isCurrent = { mediaId == coverMediaId },
+            apply = { bitmap ->
+                binding.coverArt.setImageBitmap(bitmap)
+                binding.backgroundArt.setImageBitmap(bitmap)
+            },
+        )
     }
 
     private fun formatMs(ms: Long): String {

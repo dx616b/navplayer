@@ -137,7 +137,11 @@ class PlaybackService : MediaSessionService() {
     private fun seekToQueueIndex(index: Int) {
         val exo = player ?: return
         if (index !in 0 until exo.mediaItemCount) return
+        consecutivePlayErrors = 0
         exo.seekTo(index, 0L)
+        if (exo.playbackState == Player.STATE_IDLE || exo.playbackState == Player.STATE_ENDED) {
+            exo.prepare()
+        }
         exo.play()
     }
 
@@ -237,7 +241,7 @@ class PlaybackService : MediaSessionService() {
         private const val HTTP_TIMEOUT_MS = 30_000
         private const val MIN_BUFFER_MS = 60_000
         private const val MAX_BUFFER_MS = 180_000
-        private const val BUFFER_FOR_PLAYBACK_MS = 15_000
-        private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 30_000
+        private const val BUFFER_FOR_PLAYBACK_MS = 2_500
+        private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 15_000
     }
 }

@@ -74,6 +74,7 @@ class SubsonicClient(
     private val coverArtCache: CoverArtDiskCache,
 ) {
     private val http = OkHttpClient.Builder().build()
+    private val coverHttp = OkHttpClient.Builder().build()
     private val gson = GsonBuilder().withSubsonicAdapters().create()
     private val api: SubsonicApi = Retrofit.Builder()
         .baseUrl("https://placeholder.invalid/")
@@ -176,8 +177,15 @@ class SubsonicClient(
             .toString()
     }
 
-    /** Returns a on-disk cache file (downloads on miss). Decode with [CoverArtBitmap] to avoid extra byte[] copies. */
-    suspend fun getCoverArtFile(
+    /** Disk hit only — safe to call on the main thread. */
+    fun cachedCoverArtFile(
+        config: ServerConfig,
+        coverArtId: String,
+        size: Int = COVER_SIZE_THUMB,
+    ): java.io.File? = coverArtCache.cachedFile(serverCacheKey(config.baseUrl), coverArtId, size)
+
+    /** Downloads on miss and writes to disk. Does not block playback. */
+    suspend fun prefetchCoverArt(
         config: ServerConfig,
         coverArtId: String,
         size: Int = COVER_SIZE_THUMB,
@@ -186,7 +194,7 @@ class SubsonicClient(
         coverArtCache.cachedFile(serverKey, coverArtId, size)?.let { return@withContext it }
 
         val request = Request.Builder().url(coverArtUrl(config, coverArtId, size)).build()
-        val bytes = http.newCall(request).execute().use { response ->
+        val bytes = coverHttp.newCall(request).execute().use { response ->
             if (response.isSuccessful) response.body?.bytes() else null
         } ?: return@withContext null
         coverArtCache.write(serverKey, coverArtId, size, bytes)
