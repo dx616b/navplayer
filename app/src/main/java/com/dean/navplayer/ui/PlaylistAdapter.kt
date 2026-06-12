@@ -17,6 +17,7 @@ class PlaylistAdapter(
     private val scope: CoroutineScope,
     private val loadCoverArt: suspend (String) -> ByteArray?,
     private val rowMinHeightPx: Int,
+    private val coverSizePx: Int,
     private val onClick: (PlaylistSummary) -> Unit,
 ) : RecyclerView.Adapter<PlaylistAdapter.ViewHolder>() {
 
@@ -29,10 +30,15 @@ class PlaylistAdapter(
             scope: CoroutineScope,
             loadCoverArt: suspend (String) -> ByteArray?,
             rowMinHeightPx: Int,
+            coverSizePx: Int,
             click: (PlaylistSummary) -> Unit,
         ) {
             coverJob?.cancel()
             binding.root.minimumHeight = rowMinHeightPx
+            binding.playlistArt.layoutParams = binding.playlistArt.layoutParams.apply {
+                width = coverSizePx
+                height = coverSizePx
+            }
             binding.playlistName.text = item.name
             binding.playlistArt.setImageResource(R.drawable.ic_cover_placeholder)
             binding.root.setOnClickListener { click(item) }
@@ -58,7 +64,7 @@ class PlaylistAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[position], position, scope, loadCoverArt, rowMinHeightPx, onClick)
+        holder.bind(items[position], position, scope, loadCoverArt, rowMinHeightPx, coverSizePx, onClick)
     }
 
     override fun onViewRecycled(holder: ViewHolder) {

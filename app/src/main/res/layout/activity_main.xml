@@ -99,8 +99,8 @@
 
         <ImageView
             android:id="@+id/coverArt"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="@dimen/cover_art_player_bar"
+            android:layout_height="@dimen/cover_art_player_bar"
             android:contentDescription="@string/cover_art"
             android:scaleType="centerCrop"
             android:src="@drawable/ic_cover_placeholder" />

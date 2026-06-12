@@ -46,6 +46,9 @@ object HeadUnitUi {
     fun playlistRowMinHeight(activity: Activity, drivingMode: Boolean): Int =
         activity.dimen(if (drivingMode) R.dimen.driving_playlist_row_min_height else R.dimen.playlist_row_min_height)
 
+    fun playlistCoverSizePx(activity: Activity, drivingMode: Boolean): Int =
+        activity.dimen(if (drivingMode) R.dimen.driving_cover_art_playlist else R.dimen.cover_art_playlist)
+
     private fun Activity.dimen(id: Int): Int = resources.getDimensionPixelSize(id)
 
     private fun android.view.View.setSizePx(width: Int, height: Int) {

@@ -161,11 +161,11 @@ class SubsonicClient(
             .toString()
     }
 
-    fun coverArtUrl(config: ServerConfig, coverArtId: String): String {
+    fun coverArtUrl(config: ServerConfig, coverArtId: String, size: Int = COVER_SIZE_THUMB): String {
         val auth = auth(config.password)
-        return endpoint(config.baseUrl, "getCoverArt").toHttpUrl().newBuilder()
+        return endpoint(config.baseUrl, "getCoverArt.view").toHttpUrl().newBuilder()
             .addQueryParameter("id", coverArtId)
-            .addQueryParameter("size", "64")
+            .addQueryParameter("size", size.toString())
             .addQueryParameter("u", config.username)
             .addQueryParameter("t", auth.token)
             .addQueryParameter("s", auth.salt)
@@ -175,8 +175,12 @@ class SubsonicClient(
             .toString()
     }
 
-    suspend fun fetchCoverArtBytes(config: ServerConfig, coverArtId: String): ByteArray? = withContext(Dispatchers.IO) {
-        val request = Request.Builder().url(coverArtUrl(config, coverArtId)).build()
+    suspend fun fetchCoverArtBytes(
+        config: ServerConfig,
+        coverArtId: String,
+        size: Int = COVER_SIZE_THUMB,
+    ): ByteArray? = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(coverArtUrl(config, coverArtId, size)).build()
         http.newCall(request).execute().use { response ->
             if (response.isSuccessful) response.body?.bytes() else null
         }
@@ -214,5 +218,8 @@ class SubsonicClient(
 
     companion object {
         const val RANDOM_BATCH_SIZE = 100
+        const val COVER_SIZE_THUMB = 256
+        const val COVER_SIZE_PLAYER = 320
+        const val COVER_SIZE_LARGE = 800
     }
 }

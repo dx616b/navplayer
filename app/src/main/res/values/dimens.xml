@@ -14,4 +14,9 @@
 
     <dimen name="transport_icon_padding">4dp</dimen>
     <dimen name="play_icon_padding">6dp</dimen>
+
+    <dimen name="cover_art_player_bar">48dp</dimen>
+    <dimen name="cover_art_playlist">56dp</dimen>
+    <dimen name="cover_art_now_playing">200dp</dimen>
+    <dimen name="driving_cover_art_playlist">64dp</dimen>
 </resources>

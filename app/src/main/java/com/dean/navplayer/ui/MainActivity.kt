@@ -18,6 +18,7 @@ import androidx.media3.session.MediaController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.dean.navplayer.NavPlayerApp
 import com.dean.navplayer.R
+import com.dean.navplayer.data.SubsonicClient
 import com.dean.navplayer.data.Track
 import com.dean.navplayer.databinding.ActivityMainBinding
 import com.dean.navplayer.playback.PlaybackService
@@ -232,7 +233,11 @@ class MainActivity : AppCompatActivity() {
         if (mediaId.isNullOrBlank()) return
         val config = app.credentials.load() ?: return
         lifecycleScope.launch {
-            val bytes = app.subsonic.fetchCoverArtBytes(config, mediaId) ?: return@launch
+            val bytes = app.subsonic.fetchCoverArtBytes(
+                config,
+                mediaId,
+                SubsonicClient.COVER_SIZE_PLAYER,
+            ) ?: return@launch
             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@launch
             binding.coverArt.setImageBitmap(bitmap)
         }
@@ -248,8 +253,11 @@ class MainActivity : AppCompatActivity() {
                     binding.playlistList.adapter = PlaylistAdapter(
                         list,
                         lifecycleScope,
-                        { coverId -> app.subsonic.fetchCoverArtBytes(config, coverId) },
+                        { coverId ->
+                            app.subsonic.fetchCoverArtBytes(config, coverId, SubsonicClient.COVER_SIZE_THUMB)
+                        },
                         HeadUnitUi.playlistRowMinHeight(this@MainActivity, app.prefs.drivingMode),
+                        HeadUnitUi.playlistCoverSizePx(this@MainActivity, app.prefs.drivingMode),
                     ) { playlist ->
                         lifecycleScope.launch {
                             binding.loadingIndicator.isVisible = true

@@ -10,6 +10,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.dean.navplayer.NavPlayerApp
+import com.dean.navplayer.data.SubsonicClient
 import com.dean.navplayer.R
 import com.dean.navplayer.databinding.ActivityNowPlayingBinding
 import com.dean.navplayer.playback.PlaybackService
@@ -201,7 +202,11 @@ class NowPlayingActivity : AppCompatActivity() {
         if (mediaId.isNullOrBlank()) return
         val config = app.credentials.load() ?: return
         lifecycleScope.launch {
-            val bytes = app.subsonic.fetchCoverArtBytes(config, mediaId) ?: return@launch
+            val bytes = app.subsonic.fetchCoverArtBytes(
+                config,
+                mediaId,
+                SubsonicClient.COVER_SIZE_LARGE,
+            ) ?: return@launch
             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@launch
             binding.coverArt.setImageBitmap(bitmap)
             binding.backgroundArt.setImageBitmap(bitmap)
