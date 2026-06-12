@@ -7,6 +7,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
@@ -33,13 +34,19 @@ class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var randomMode = false
     private var isPrefetchingRandom = false
+    private var consecutivePlayErrors = 0
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val playerListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            consecutivePlayErrors = 0
             trimPlayedMediaItems()
             maybePrefetchRandomBatch()
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            skipAfterPlayError()
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -110,6 +117,23 @@ class PlaybackService : MediaSessionService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
+    private fun skipAfterPlayError() {
+        val exo = player ?: return
+        consecutivePlayErrors++
+        if (consecutivePlayErrors > MAX_CONSECUTIVE_PLAY_ERRORS) {
+            exo.stop()
+            return
+        }
+        if (exo.hasNextMediaItem()) {
+            exo.seekToNextMediaItem()
+            exo.play()
+        } else if (randomMode) {
+            maybePrefetchRandomBatch()
+        } else {
+            exo.stop()
+        }
+    }
+
     private fun seekToQueueIndex(index: Int) {
         val exo = player ?: return
         if (index !in 0 until exo.mediaItemCount) return
@@ -133,6 +157,7 @@ class PlaybackService : MediaSessionService() {
         val config = app.credentials.load() ?: return
         val items = tracksToMediaItems(app.subsonic, config, tracks)
         if (replace) {
+            consecutivePlayErrors = 0
             exo.setMediaItems(items, 0, 0L)
             exo.prepare()
             exo.play()
@@ -206,6 +231,7 @@ class PlaybackService : MediaSessionService() {
         private const val MAX_QUEUE_AHEAD = 35
         private const val RANDOM_PREFETCH_BATCH_SIZE = 50
         private const val KEEP_BEHIND_RANDOM = 15
+        private const val MAX_CONSECUTIVE_PLAY_ERRORS = 5
 
         // Tuned for always-on cellular: higher pre-buffer, longer timeouts.
         private const val HTTP_TIMEOUT_MS = 30_000
