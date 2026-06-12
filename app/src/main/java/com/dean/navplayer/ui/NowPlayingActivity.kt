@@ -1,7 +1,6 @@
 package com.dean.navplayer.ui
 
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
@@ -10,6 +9,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.dean.navplayer.NavPlayerApp
+import com.dean.navplayer.data.CoverArtBitmap
 import com.dean.navplayer.data.SubsonicClient
 import com.dean.navplayer.R
 import com.dean.navplayer.databinding.ActivityNowPlayingBinding
@@ -202,12 +202,13 @@ class NowPlayingActivity : AppCompatActivity() {
         if (mediaId.isNullOrBlank()) return
         val config = app.credentials.load() ?: return
         lifecycleScope.launch {
-            val bytes = app.subsonic.fetchCoverArtBytes(
+            val file = app.subsonic.getCoverArtFile(
                 config,
                 mediaId,
                 SubsonicClient.COVER_SIZE_LARGE,
             ) ?: return@launch
-            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return@launch
+            val px = resources.getDimensionPixelSize(R.dimen.cover_art_now_playing)
+            val bitmap = CoverArtBitmap.decode(file, px) ?: return@launch
             binding.coverArt.setImageBitmap(bitmap)
             binding.backgroundArt.setImageBitmap(bitmap)
         }

@@ -1,6 +1,7 @@
 package com.dean.navplayer
 
 import android.app.Application
+import com.dean.navplayer.data.CoverArtDiskCache
 import com.dean.navplayer.data.CredentialsStore
 import com.dean.navplayer.data.NavPlayerPrefs
 import com.dean.navplayer.data.SubsonicClient
@@ -19,10 +20,14 @@ class NavPlayerApp : Application() {
     lateinit var playbackQueue: PlaybackQueueStore
         private set
 
+    lateinit var coverArtCache: CoverArtDiskCache
+        private set
+
     override fun onCreate() {
         super.onCreate()
         credentials = CredentialsStore(this)
-        subsonic = SubsonicClient(credentials)
+        coverArtCache = CoverArtDiskCache(this)
+        subsonic = SubsonicClient(credentials, coverArtCache)
         prefs = NavPlayerPrefs(this)
         playbackQueue = PlaybackQueueStore()
     }

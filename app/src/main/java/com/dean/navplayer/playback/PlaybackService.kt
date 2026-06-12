@@ -38,6 +38,7 @@ class PlaybackService : MediaSessionService() {
 
     private val playerListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            trimPlayedMediaItems()
             maybePrefetchRandomBatch()
         }
 
@@ -129,6 +130,14 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    private fun trimPlayedMediaItems() {
+        val exo = player ?: return
+        val index = exo.currentMediaItemIndex
+        if (index > 0) {
+            exo.removeMediaItems(0, index)
+        }
+    }
+
     private fun maybePrefetchRandomBatch() {
         if (!randomMode || isPrefetchingRandom) return
         val exo = player ?: return
@@ -136,6 +145,7 @@ class PlaybackService : MediaSessionService() {
 
         val remaining = exo.mediaItemCount - exo.currentMediaItemIndex - 1
         if (remaining > RANDOM_PREFETCH_REMAINING) return
+        if (remaining >= MAX_QUEUE_AHEAD) return
 
         isPrefetchingRandom = true
         serviceScope.launch {
@@ -144,11 +154,12 @@ class PlaybackService : MediaSessionService() {
                 val config = app.credentials.load()
                     ?: throw IllegalStateException("Not logged in")
                 withContext(Dispatchers.IO) {
-                    app.subsonic.getRandomSongs(config, SubsonicClient.RANDOM_BATCH_SIZE)
+                    app.subsonic.getRandomSongs(config, RANDOM_PREFETCH_BATCH_SIZE)
                 }
             }.onSuccess { tracks ->
                 if (tracks.isNotEmpty()) {
-                    playQueue(tracks.shuffled(), replace = false)
+                    val space = MAX_QUEUE_AHEAD - remaining
+                    playQueue(tracks.shuffled().take(space), replace = false)
                 }
             }
             isPrefetchingRandom = false
@@ -177,6 +188,8 @@ class PlaybackService : MediaSessionService() {
         const val EXTRA_RANDOM_MODE = "random_mode"
 
         private const val RANDOM_PREFETCH_REMAINING = 10
+        private const val MAX_QUEUE_AHEAD = 35
+        private const val RANDOM_PREFETCH_BATCH_SIZE = 50
 
         // Tuned for always-on cellular: higher pre-buffer, longer timeouts.
         private const val HTTP_TIMEOUT_MS = 30_000

@@ -71,6 +71,7 @@ interface SubsonicApi {
 
 class SubsonicClient(
     private val credentialsStore: CredentialsStore,
+    private val coverArtCache: CoverArtDiskCache,
 ) {
     private val http = OkHttpClient.Builder().build()
     private val gson = GsonBuilder().withSubsonicAdapters().create()
@@ -175,16 +176,23 @@ class SubsonicClient(
             .toString()
     }
 
-    suspend fun fetchCoverArtBytes(
+    /** Returns a on-disk cache file (downloads on miss). Decode with [CoverArtBitmap] to avoid extra byte[] copies. */
+    suspend fun getCoverArtFile(
         config: ServerConfig,
         coverArtId: String,
         size: Int = COVER_SIZE_THUMB,
-    ): ByteArray? = withContext(Dispatchers.IO) {
+    ): java.io.File? = withContext(Dispatchers.IO) {
+        val serverKey = serverCacheKey(config.baseUrl)
+        coverArtCache.cachedFile(serverKey, coverArtId, size)?.let { return@withContext it }
+
         val request = Request.Builder().url(coverArtUrl(config, coverArtId, size)).build()
-        http.newCall(request).execute().use { response ->
+        val bytes = http.newCall(request).execute().use { response ->
             if (response.isSuccessful) response.body?.bytes() else null
-        }
+        } ?: return@withContext null
+        coverArtCache.write(serverKey, coverArtId, size, bytes)
     }
+
+    private fun serverCacheKey(baseUrl: String): String = md5Hex(baseUrl)
 
     fun currentConfig(): ServerConfig? = credentialsStore.load()
 
