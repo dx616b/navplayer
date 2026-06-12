@@ -16,9 +16,15 @@ data class QueueItem(
 )
 
 class QueueAdapter(
-    private val items: List<QueueItem>,
     private val onSelect: (Int) -> Unit,
 ) : RecyclerView.Adapter<QueueAdapter.ViewHolder>() {
+
+    private var items: List<QueueItem> = emptyList()
+
+    fun submitItems(newItems: List<QueueItem>) {
+        items = newItems
+        notifyDataSetChanged()
+    }
 
     class ViewHolder(private val binding: ItemQueueTrackBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: QueueItem, onSelect: (Int) -> Unit) {
@@ -27,9 +33,7 @@ class QueueAdapter(
             val color = if (item.isCurrent) R.color.primary else R.color.on_surface
             binding.queueTitle.setTextColor(ContextCompat.getColor(binding.root.context, color))
             binding.queueTitle.setTypeface(null, if (item.isCurrent) Typeface.BOLD else Typeface.NORMAL)
-            binding.root.setOnClickListener {
-                if (!item.isCurrent) onSelect(item.playerIndex)
-            }
+            binding.root.setOnClickListener { onSelect(item.playerIndex) }
         }
     }
 

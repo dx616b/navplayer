@@ -102,8 +102,19 @@ class PlaybackService : MediaSessionService() {
                 val tracks = (application as NavPlayerApp).playbackQueue.take().orEmpty()
                 playQueue(tracks, replace = true)
             }
+            ACTION_SEEK_TO_INDEX -> {
+                val index = intent.getIntExtra(EXTRA_MEDIA_INDEX, -1)
+                seekToQueueIndex(index)
+            }
         }
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun seekToQueueIndex(index: Int) {
+        val exo = player ?: return
+        if (index !in 0 until exo.mediaItemCount) return
+        exo.seekTo(index, 0L)
+        exo.play()
     }
 
     override fun onDestroy() {
@@ -187,7 +198,9 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         const val ACTION_SET_QUEUE = "com.dean.navplayer.action.SET_QUEUE"
+        const val ACTION_SEEK_TO_INDEX = "com.dean.navplayer.action.SEEK_TO_INDEX"
         const val EXTRA_RANDOM_MODE = "random_mode"
+        const val EXTRA_MEDIA_INDEX = "media_index"
 
         private const val RANDOM_PREFETCH_REMAINING = 10
         private const val MAX_QUEUE_AHEAD = 35

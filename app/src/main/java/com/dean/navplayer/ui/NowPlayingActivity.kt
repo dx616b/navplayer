@@ -30,6 +30,7 @@ class NowPlayingActivity : AppCompatActivity() {
     private var controller: MediaController? = null
     private var progressJob: Job? = null
     private var userSeeking = false
+    private var queueAdapter: QueueAdapter? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -192,9 +193,20 @@ class NowPlayingActivity : AppCompatActivity() {
                 isCurrent = index == current,
             )
         }
-        binding.queueList.adapter = QueueAdapter(items) { index ->
-            controller?.seekToDefaultPosition(index)
+        val adapter = queueAdapter ?: QueueAdapter { index -> jumpToQueueIndex(index) }.also {
+            queueAdapter = it
+            binding.queueList.adapter = it
         }
+        adapter.submitItems(items)
+    }
+
+    private fun jumpToQueueIndex(index: Int) {
+        startService(
+            Intent(this, PlaybackService::class.java).apply {
+                action = PlaybackService.ACTION_SEEK_TO_INDEX
+                putExtra(PlaybackService.EXTRA_MEDIA_INDEX, index)
+            },
+        )
     }
 
     private fun updatePlayPauseIcon(playing: Boolean) {
