@@ -48,9 +48,9 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/settings"
             android:focusable="true"
-            android:padding="8dp"
-            android:scaleType="centerInside"
-            android:src="@android:drawable/ic_menu_preferences"
+            android:padding="@dimen/transport_icon_padding"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_settings"
             app:tint="@color/on_surface" />
     </LinearLayout>
 
@@ -141,9 +141,9 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/previous"
             android:focusable="true"
-            android:padding="8dp"
-            android:scaleType="centerInside"
-            android:src="@android:drawable/ic_media_previous"
+            android:padding="@dimen/transport_icon_padding"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_skip_previous"
             app:tint="@color/on_surface" />
 
         <ImageButton
@@ -153,9 +153,9 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/play_pause"
             android:focusable="true"
-            android:padding="8dp"
-            android:scaleType="centerInside"
-            android:src="@android:drawable/ic_media_play"
+            android:padding="@dimen/play_icon_padding"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_play"
             app:tint="@color/primary" />
 
         <ImageButton
@@ -165,9 +165,9 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/next"
             android:focusable="true"
-            android:padding="8dp"
-            android:scaleType="centerInside"
-            android:src="@android:drawable/ic_media_next"
+            android:padding="@dimen/transport_icon_padding"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_skip_next"
             app:tint="@color/on_surface" />
 
         <SeekBar

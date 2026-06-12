@@ -57,8 +57,9 @@
             android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/close"
-            android:padding="6dp"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:padding="@dimen/transport_icon_padding"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_close"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:tint="@color/on_surface" />
@@ -122,8 +123,9 @@
                 android:layout_height="52dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/previous"
-                android:padding="10dp"
-                android:src="@android:drawable/ic_media_previous"
+                android:padding="@dimen/transport_icon_padding"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_skip_previous"
                 app:tint="@color/on_surface" />
 
             <ImageButton
@@ -132,8 +134,9 @@
                 android:layout_height="60dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/play_pause"
-                android:padding="10dp"
-                android:src="@android:drawable/ic_media_play"
+                android:padding="@dimen/play_icon_padding"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_play"
                 app:tint="@color/primary" />
 
             <ImageButton
@@ -142,8 +145,9 @@
                 android:layout_height="52dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/next"
-                android:padding="10dp"
-                android:src="@android:drawable/ic_media_next"
+                android:padding="@dimen/transport_icon_padding"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_skip_next"
                 app:tint="@color/on_surface" />
         </LinearLayout>
 

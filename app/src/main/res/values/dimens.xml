@@ -11,4 +11,7 @@
     <dimen name="driving_player_bar_min_height">80dp</dimen>
     <dimen name="driving_playlist_row_min_height">72dp</dimen>
     <dimen name="driving_random_min_height">56dp</dimen>
+
+    <dimen name="transport_icon_padding">4dp</dimen>
+    <dimen name="play_icon_padding">6dp</dimen>
 </resources>
