@@ -131,10 +131,12 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun trimPlayedMediaItems() {
+        if (!randomMode) return
         val exo = player ?: return
         val index = exo.currentMediaItemIndex
-        if (index > 0) {
-            exo.removeMediaItems(0, index)
+        val trimEnd = index - KEEP_BEHIND_RANDOM
+        if (trimEnd > 0) {
+            exo.removeMediaItems(0, trimEnd)
         }
     }
 
@@ -190,6 +192,7 @@ class PlaybackService : MediaSessionService() {
         private const val RANDOM_PREFETCH_REMAINING = 10
         private const val MAX_QUEUE_AHEAD = 35
         private const val RANDOM_PREFETCH_BATCH_SIZE = 50
+        private const val KEEP_BEHIND_RANDOM = 15
 
         // Tuned for always-on cellular: higher pre-buffer, longer timeouts.
         private const val HTTP_TIMEOUT_MS = 30_000

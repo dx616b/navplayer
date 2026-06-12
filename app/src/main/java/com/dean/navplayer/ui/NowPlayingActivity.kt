@@ -17,6 +17,7 @@ import com.dean.navplayer.playback.PlaybackService
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -180,16 +181,20 @@ class NowPlayingActivity : AppCompatActivity() {
     private fun syncQueue(c: MediaController) {
         val current = c.currentMediaItemIndex
         val count = c.mediaItemCount
+        val start = max(0, current - PREVIOUS_COUNT)
         val end = min(current + UPCOMING_COUNT, count)
-        val items = (current until end).map { index ->
+        val items = (start until end).map { index ->
             val meta = c.getMediaItemAt(index).mediaMetadata
             QueueItem(
+                playerIndex = index,
                 title = meta.title?.toString().orEmpty(),
                 artist = meta.artist?.toString().orEmpty(),
                 isCurrent = index == current,
             )
         }
-        binding.queueList.adapter = QueueAdapter(items)
+        binding.queueList.adapter = QueueAdapter(items) { index ->
+            controller?.seekToDefaultPosition(index)
+        }
     }
 
     private fun updatePlayPauseIcon(playing: Boolean) {
@@ -222,6 +227,7 @@ class NowPlayingActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val PREVIOUS_COUNT = 15
         private const val UPCOMING_COUNT = 15
     }
 }
