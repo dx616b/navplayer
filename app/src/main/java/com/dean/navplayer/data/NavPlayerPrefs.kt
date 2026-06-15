@@ -13,9 +13,14 @@ class NavPlayerPrefs(context: Context) {
         get() = prefs.getBoolean(KEY_DRIVING_MODE, false)
         set(value) = prefs.edit().putBoolean(KEY_DRIVING_MODE, value).apply()
 
+    var settingsHintDismissed: Boolean
+        get() = prefs.getBoolean(KEY_SETTINGS_HINT_DISMISSED, false)
+        set(value) = prefs.edit().putBoolean(KEY_SETTINGS_HINT_DISMISSED, value).apply()
+
     companion object {
         private const val FILE_NAME = "navplayer_prefs"
         private const val KEY_AUTO_START = "auto_start_on_boot"
         private const val KEY_DRIVING_MODE = "driving_mode"
+        private const val KEY_SETTINGS_HINT_DISMISSED = "settings_hint_dismissed"
     }
 }

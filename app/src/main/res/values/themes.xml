@@ -1,12 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.NavPlayer" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <!-- Head-unit UI is always dark; DayNight was applying light Material text on #121212. -->
+    <style name="Theme.NavPlayer" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorSecondary">@color/primary</item>
+        <item name="colorOnSecondary">@color/on_primary</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="colorOnBackground">@color/on_surface</item>
         <item name="android:statusBarColor">@color/bg</item>
         <item name="android:navigationBarColor">@color/bg</item>
         <item name="android:windowBackground">@color/bg</item>
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorSurface">@color/surface</item>
         <item name="android:textColorPrimary">@color/on_surface</item>
+        <item name="android:textColorSecondary">@color/muted</item>
+        <item name="materialButtonOutlinedStyle">@style/Widget.NavPlayer.ActionButton</item>
+        <item name="textInputStyle">@style/Widget.NavPlayer.TextInputLayout</item>
+        <item name="switchStyle">@style/Widget.NavPlayer.Switch</item>
+    </style>
+
+    <style name="Widget.NavPlayer.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/primary</item>
+        <item name="hintTextColor">@color/muted</item>
+        <item name="android:textColorHint">@color/muted</item>
+        <item name="boxBackgroundColor">@color/surface</item>
+    </style>
+
+    <style name="Widget.NavPlayer.Switch" parent="Widget.MaterialComponents.CompoundButton.Switch">
+        <item name="android:textColor">@color/on_surface</item>
     </style>
 
     <style name="Widget.NavPlayer.RandomButton" parent="Widget.MaterialComponents.Button">
@@ -42,6 +65,9 @@
     <style name="Widget.NavPlayer.ActionButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:minHeight">52dp</item>
         <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/on_surface</item>
+        <item name="strokeColor">@color/muted</item>
+        <item name="rippleColor">@color/primary</item>
         <item name="android:insetTop">0dp</item>
         <item name="android:insetBottom">0dp</item>
     </style>
@@ -54,5 +80,11 @@
         <item name="android:minHeight">@dimen/touch_target_min</item>
         <item name="android:paddingTop">12dp</item>
         <item name="android:paddingBottom">12dp</item>
+    </style>
+
+    <style name="Widget.NavPlayer.SeekBar.Driving" parent="Widget.NavPlayer.SeekBar">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingTop">16dp</item>
+        <item name="android:paddingBottom">16dp</item>
     </style>
 </resources>

@@ -17,17 +17,26 @@ data class QueueItem(
 
 class QueueAdapter(
     private val onSelect: (Int) -> Unit,
+    private var rowMinHeightPx: Int = 0,
 ) : RecyclerView.Adapter<QueueAdapter.ViewHolder>() {
 
     private var items: List<QueueItem> = emptyList()
 
+    fun setRowMinHeightPx(px: Int) {
+        if (rowMinHeightPx == px) return
+        rowMinHeightPx = px
+        notifyDataSetChanged()
+    }
+
     fun submitItems(newItems: List<QueueItem>) {
+        if (items == newItems) return
         items = newItems
         notifyDataSetChanged()
     }
 
     class ViewHolder(private val binding: ItemQueueTrackBinding) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(item: QueueItem, onSelect: (Int) -> Unit) {
+        fun bind(item: QueueItem, rowMinHeightPx: Int, onSelect: (Int) -> Unit) {
+            binding.root.minimumHeight = rowMinHeightPx
             binding.queueTitle.text = item.title
             binding.queueArtist.text = item.artist
             val color = if (item.isCurrent) R.color.primary else R.color.on_surface
@@ -43,7 +52,7 @@ class QueueAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[position], onSelect)
+        holder.bind(items[position], rowMinHeightPx, onSelect)
     }
 
     override fun getItemCount(): Int = items.size

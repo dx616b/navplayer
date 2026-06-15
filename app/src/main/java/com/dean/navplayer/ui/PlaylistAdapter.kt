@@ -1,5 +1,6 @@
 package com.dean.navplayer.ui
 
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -17,22 +18,44 @@ class PlaylistAdapter(
     private val scope: CoroutineScope,
     private val subsonic: SubsonicClient,
     private val config: ServerConfig,
-    private val rowMinHeightPx: Int,
-    private val coverSizePx: Int,
+    private var rowMinHeightPx: Int,
+    private var coverSizePx: Int,
+    private var nameTextSizeSp: Float,
     private val onClick: (PlaylistSummary) -> Unit,
 ) : RecyclerView.Adapter<PlaylistAdapter.ViewHolder>() {
+
+    var playingPlaylistId: String? = null
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
+
+    fun updateLayout(rowMinHeightPx: Int, coverSizePx: Int, nameTextSizeSp: Float) {
+        if (this.rowMinHeightPx == rowMinHeightPx &&
+            this.coverSizePx == coverSizePx &&
+            this.nameTextSizeSp == nameTextSizeSp
+        ) {
+            return
+        }
+        this.rowMinHeightPx = rowMinHeightPx
+        this.coverSizePx = coverSizePx
+        this.nameTextSizeSp = nameTextSizeSp
+        notifyDataSetChanged()
+    }
 
     class ViewHolder(private val binding: ItemPlaylistBinding) : RecyclerView.ViewHolder(binding.root) {
         private var coverJob: Job? = null
 
         fun bind(
             item: PlaylistSummary,
-            position: Int,
             scope: CoroutineScope,
             subsonic: SubsonicClient,
             config: ServerConfig,
             rowMinHeightPx: Int,
             coverSizePx: Int,
+            nameTextSizeSp: Float,
+            playingPlaylistId: String?,
             click: (PlaylistSummary) -> Unit,
         ) {
             coverJob?.cancel()
@@ -42,18 +65,24 @@ class PlaylistAdapter(
                 height = coverSizePx
             }
             binding.playlistName.text = item.name
+            binding.playlistName.setTextSize(TypedValue.COMPLEX_UNIT_SP, nameTextSizeSp)
             binding.playlistArt.setImageResource(R.drawable.ic_cover_placeholder)
+            binding.root.setBackgroundResource(
+                if (item.id == playingPlaylistId) R.drawable.bg_list_item_playing else R.drawable.bg_list_item,
+            )
             binding.root.setOnClickListener { click(item) }
 
+            val coverArtId = item.coverArtId
+            binding.root.tag = coverArtId
             coverJob = CoverArtLoader.load(
                 scope,
                 subsonic,
                 config,
-                item.coverArtId,
+                coverArtId,
                 SubsonicClient.COVER_SIZE_THUMB,
                 maxSidePx = coverSizePx,
                 lowMemory = true,
-                isCurrent = { bindingAdapterPosition == position },
+                isCurrent = { binding.root.tag == coverArtId },
                 apply = { binding.playlistArt.setImageBitmap(it) },
             )
         }
@@ -69,7 +98,17 @@ class PlaylistAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[position], position, scope, subsonic, config, rowMinHeightPx, coverSizePx, onClick)
+        holder.bind(
+            items[position],
+            scope,
+            subsonic,
+            config,
+            rowMinHeightPx,
+            coverSizePx,
+            nameTextSizeSp,
+            playingPlaylistId,
+            onClick,
+        )
     }
 
     override fun onViewRecycled(holder: ViewHolder) {

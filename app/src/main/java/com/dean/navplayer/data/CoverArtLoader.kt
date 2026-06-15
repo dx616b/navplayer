@@ -20,16 +20,27 @@ object CoverArtLoader {
         lowMemory: Boolean = false,
         isCurrent: () -> Boolean,
         apply: (Bitmap) -> Unit,
+        applyBackground: ((Bitmap) -> Unit)? = null,
     ): Job = scope.launch {
-        cachedCoverArtFile(subsonic, config, coverArtId, size)?.let { file ->
-            if (!isCurrent()) return@launch
-            decode(file, maxSidePx, lowMemory)?.let(apply)
+        var file = cachedCoverArtFile(subsonic, config, coverArtId, size)
+        if (file == null) {
+            file = withContext(Dispatchers.IO) {
+                subsonic.prefetchCoverArt(config, coverArtId, size)
+            } ?: return@launch
         }
-        val file = withContext(Dispatchers.IO) {
-            subsonic.prefetchCoverArt(config, coverArtId, size)
+        if (!isCurrent()) return@launch
+        val decoded = withContext(Dispatchers.Default) {
+            val cover = decode(file, maxSidePx, lowMemory) ?: return@withContext null
+            val background = if (applyBackground != null) {
+                CoverArtBitmap.decodeBlurredBackground(file)
+            } else {
+                null
+            }
+            cover to background
         } ?: return@launch
         if (!isCurrent()) return@launch
-        decode(file, maxSidePx, lowMemory)?.let(apply)
+        apply(decoded.first)
+        decoded.second?.let { applyBackground?.invoke(it) }
     }
 
     suspend fun loadFile(

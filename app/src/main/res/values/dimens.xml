@@ -5,12 +5,16 @@
     <dimen name="touch_target_play">64dp</dimen>
     <dimen name="player_bar_min_height">64dp</dimen>
     <dimen name="playlist_row_min_height">56dp</dimen>
+    <dimen name="seekbar_min_height">48dp</dimen>
+    <dimen name="seekbar_padding_vertical">12dp</dimen>
 
-    <dimen name="driving_touch_transport">72dp</dimen>
-    <dimen name="driving_touch_play">80dp</dimen>
-    <dimen name="driving_player_bar_min_height">80dp</dimen>
-    <dimen name="driving_playlist_row_min_height">72dp</dimen>
-    <dimen name="driving_random_min_height">56dp</dimen>
+    <dimen name="driving_touch_transport">80dp</dimen>
+    <dimen name="driving_touch_play">88dp</dimen>
+    <dimen name="driving_player_bar_min_height">96dp</dimen>
+    <dimen name="driving_playlist_row_min_height">80dp</dimen>
+    <dimen name="driving_random_min_height">64dp</dimen>
+    <dimen name="driving_seekbar_min_height">64dp</dimen>
+    <dimen name="driving_seekbar_padding_vertical">18dp</dimen>
 
     <dimen name="transport_icon_padding">4dp</dimen>
     <dimen name="play_icon_padding">6dp</dimen>
@@ -18,5 +22,10 @@
     <dimen name="cover_art_player_bar">48dp</dimen>
     <dimen name="cover_art_playlist">56dp</dimen>
     <dimen name="cover_art_now_playing">200dp</dimen>
-    <dimen name="driving_cover_art_playlist">64dp</dimen>
+    <dimen name="driving_cover_art_playlist">72dp</dimen>
+    <dimen name="driving_cover_art_player_bar">64dp</dimen>
+    <dimen name="driving_cover_art_now_playing">260dp</dimen>
+    <dimen name="queue_row_min_height">44dp</dimen>
+    <dimen name="driving_queue_row_min_height">56dp</dimen>
+    <dimen name="driving_close_button">48dp</dimen>
 </resources>

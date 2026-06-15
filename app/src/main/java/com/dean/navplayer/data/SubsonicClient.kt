@@ -6,6 +6,8 @@ import java.security.MessageDigest
 import java.util.Locale
 import java.util.Random
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -74,7 +76,13 @@ class SubsonicClient(
     private val coverArtCache: CoverArtDiskCache,
 ) {
     private val http = OkHttpClient.Builder().build()
-    private val coverHttp = OkHttpClient.Builder().build()
+    private val coverDownloadSemaphore = Semaphore(COVER_DOWNLOAD_CONCURRENCY)
+    @Volatile
+    private var playlistsCacheKey: String? = null
+    @Volatile
+    private var playlistsCache: List<PlaylistSummary>? = null
+    @Volatile
+    private var playlistsCacheAtMs: Long = 0L
     private val gson = GsonBuilder().withSubsonicAdapters().create()
     private val api: SubsonicApi = Retrofit.Builder()
         .baseUrl("https://placeholder.invalid/")
@@ -104,7 +112,21 @@ class SubsonicClient(
         ensureOk(body.response)
     }
 
-    suspend fun getPlaylists(config: ServerConfig): List<PlaylistSummary> {
+    suspend fun getPlaylists(
+        config: ServerConfig,
+        forceRefresh: Boolean = false,
+    ): List<PlaylistSummary> {
+        val cacheKey = playlistCacheKey(config)
+        if (!forceRefresh) {
+            val cached = playlistsCache
+            if (cached != null &&
+                playlistsCacheKey == cacheKey &&
+                System.currentTimeMillis() - playlistsCacheAtMs < PLAYLISTS_CACHE_TTL_MS
+            ) {
+                return cached
+            }
+        }
+
         val auth = auth(config.password)
         val body = api.getPlaylists(
             endpoint(config.baseUrl, "getPlaylists.view"),
@@ -113,9 +135,19 @@ class SubsonicClient(
             auth.salt,
         )
         ensureOk(body.response)
-        return body.response.playlists?.playlist.orEmpty().map {
+        val playlists = body.response.playlists?.playlist.orEmpty().map {
             PlaylistSummary(it.id, it.name, it.coverArt ?: it.id)
         }
+        playlistsCacheKey = cacheKey
+        playlistsCache = playlists
+        playlistsCacheAtMs = System.currentTimeMillis()
+        return playlists
+    }
+
+    fun invalidatePlaylistsCache() {
+        playlistsCacheKey = null
+        playlistsCache = null
+        playlistsCacheAtMs = 0L
     }
 
     suspend fun getPlaylistTracks(config: ServerConfig, playlistId: String): List<Track> =
@@ -150,9 +182,22 @@ class SubsonicClient(
             }
         }
 
-    fun streamUrl(config: ServerConfig, songId: String): String {
+    fun streamUrl(config: ServerConfig, songId: String): String =
+        streamUrl(config, songId, auth(config.password))
+
+    fun streamUrls(config: ServerConfig, songIds: List<String>): List<String> {
+        if (songIds.isEmpty()) return emptyList()
         val auth = auth(config.password)
-        return endpoint(config.baseUrl, "stream.view").toHttpUrl().newBuilder()
+        return songIds.map { streamUrl(config, it, auth) }
+    }
+
+    fun coverArtUrl(config: ServerConfig, coverArtId: String, size: Int = COVER_SIZE_THUMB): String {
+        val auth = auth(config.password)
+        return coverArtUrl(config, coverArtId, size, auth)
+    }
+
+    private fun streamUrl(config: ServerConfig, songId: String, auth: AuthParams): String =
+        endpoint(config.baseUrl, "stream.view").toHttpUrl().newBuilder()
             .addQueryParameter("id", songId)
             .addQueryParameter("u", config.username)
             .addQueryParameter("t", auth.token)
@@ -161,21 +206,22 @@ class SubsonicClient(
             .addQueryParameter("c", SubsonicApi.CLIENT_ID)
             .build()
             .toString()
-    }
 
-    fun coverArtUrl(config: ServerConfig, coverArtId: String, size: Int = COVER_SIZE_THUMB): String {
-        val auth = auth(config.password)
-        return endpoint(config.baseUrl, "getCoverArt.view").toHttpUrl().newBuilder()
-            .addQueryParameter("id", coverArtId)
-            .addQueryParameter("size", size.toString())
-            .addQueryParameter("u", config.username)
-            .addQueryParameter("t", auth.token)
-            .addQueryParameter("s", auth.salt)
-            .addQueryParameter("v", SubsonicApi.API_VERSION)
-            .addQueryParameter("c", SubsonicApi.CLIENT_ID)
-            .build()
-            .toString()
-    }
+    private fun coverArtUrl(
+        config: ServerConfig,
+        coverArtId: String,
+        size: Int,
+        auth: AuthParams,
+    ): String = endpoint(config.baseUrl, "getCoverArt.view").toHttpUrl().newBuilder()
+        .addQueryParameter("id", coverArtId)
+        .addQueryParameter("size", size.toString())
+        .addQueryParameter("u", config.username)
+        .addQueryParameter("t", auth.token)
+        .addQueryParameter("s", auth.salt)
+        .addQueryParameter("v", SubsonicApi.API_VERSION)
+        .addQueryParameter("c", SubsonicApi.CLIENT_ID)
+        .build()
+        .toString()
 
     /** Disk hit only — safe to call on the main thread. */
     fun cachedCoverArtFile(
@@ -193,11 +239,15 @@ class SubsonicClient(
         val serverKey = serverCacheKey(config.baseUrl)
         coverArtCache.cachedFile(serverKey, coverArtId, size)?.let { return@withContext it }
 
-        val request = Request.Builder().url(coverArtUrl(config, coverArtId, size)).build()
-        val bytes = coverHttp.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.bytes() else null
-        } ?: return@withContext null
-        coverArtCache.write(serverKey, coverArtId, size, bytes)
+        coverDownloadSemaphore.withPermit {
+            coverArtCache.cachedFile(serverKey, coverArtId, size)?.let { return@withPermit it }
+
+            val request = Request.Builder().url(coverArtUrl(config, coverArtId, size)).build()
+            val bytes = http.newCall(request).execute().use { response ->
+                if (response.isSuccessful) response.body?.bytes() else null
+            } ?: return@withPermit null
+            coverArtCache.write(serverKey, coverArtId, size, bytes)
+        }
     }
 
     private fun serverCacheKey(baseUrl: String): String = md5Hex(baseUrl)
@@ -232,10 +282,16 @@ class SubsonicClient(
 
     private data class AuthParams(val salt: String, val token: String)
 
+    private fun playlistCacheKey(config: ServerConfig): String =
+        "${config.baseUrl}|${config.username}"
+
     companion object {
         const val RANDOM_BATCH_SIZE = 100
+        const val RANDOM_FOLLOWUP_BATCH_SIZE = 80
         const val COVER_SIZE_THUMB = 256
         const val COVER_SIZE_PLAYER = 320
         const val COVER_SIZE_LARGE = 800
+        private const val PLAYLISTS_CACHE_TTL_MS = 5 * 60 * 1000L
+        private const val COVER_DOWNLOAD_CONCURRENCY = 4
     }
 }

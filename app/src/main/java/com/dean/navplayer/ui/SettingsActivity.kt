@@ -58,6 +58,7 @@ class SettingsActivity : AppCompatActivity() {
                     } else {
                         app.credentials.clearPassword()
                     }
+                    app.subsonic.invalidatePlaylistsCache()
                     setResult(RESULT_OK)
                     finish()
                 }
