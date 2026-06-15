@@ -28,4 +28,11 @@
     <dimen name="queue_row_min_height">44dp</dimen>
     <dimen name="driving_queue_row_min_height">56dp</dimen>
     <dimen name="driving_close_button">48dp</dimen>
+
+    <dimen name="cover_corner_radius">8dp</dimen>
+    <dimen name="cover_corner_radius_small">6dp</dimen>
+    <dimen name="cover_elevation">3dp</dimen>
+    <dimen name="list_item_corner_radius">6dp</dimen>
+    <dimen name="chip_corner_radius">4dp</dimen>
+    <dimen name="stroke_hairline">1dp</dimen>
 </resources>

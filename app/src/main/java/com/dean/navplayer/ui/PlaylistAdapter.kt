@@ -31,6 +31,13 @@ class PlaylistAdapter(
             notifyDataSetChanged()
         }
 
+    var accentColor: Int = 0
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
+
     fun updateLayout(rowMinHeightPx: Int, coverSizePx: Int, nameTextSizeSp: Float) {
         if (this.rowMinHeightPx == rowMinHeightPx &&
             this.coverSizePx == coverSizePx &&
@@ -47,6 +54,11 @@ class PlaylistAdapter(
     class ViewHolder(private val binding: ItemPlaylistBinding) : RecyclerView.ViewHolder(binding.root) {
         private var coverJob: Job? = null
 
+        init {
+            val corner = binding.root.resources.getDimension(R.dimen.cover_corner_radius_small)
+            binding.playlistArt.post { CoverUi.roundCover(binding.playlistArt, corner) }
+        }
+
         fun bind(
             item: PlaylistSummary,
             scope: CoroutineScope,
@@ -56,6 +68,7 @@ class PlaylistAdapter(
             coverSizePx: Int,
             nameTextSizeSp: Float,
             playingPlaylistId: String?,
+            accentColor: Int,
             click: (PlaylistSummary) -> Unit,
         ) {
             coverJob?.cancel()
@@ -67,9 +80,14 @@ class PlaylistAdapter(
             binding.playlistName.text = item.name
             binding.playlistName.setTextSize(TypedValue.COMPLEX_UNIT_SP, nameTextSizeSp)
             binding.playlistArt.setImageResource(R.drawable.ic_cover_placeholder)
-            binding.root.setBackgroundResource(
-                if (item.id == playingPlaylistId) R.drawable.bg_list_item_playing else R.drawable.bg_list_item,
-            )
+            binding.root.background = if (item.id == playingPlaylistId) {
+                CoverUi.playingRowBackground(
+                    binding.root.context,
+                    CoverUi.resolveAccent(binding.root.context, accentColor),
+                )
+            } else {
+                CoverUi.defaultRowBackground(binding.root.context)
+            }
             binding.root.setOnClickListener { click(item) }
 
             val coverArtId = item.coverArtId
@@ -107,6 +125,7 @@ class PlaylistAdapter(
             coverSizePx,
             nameTextSizeSp,
             playingPlaylistId,
+            accentColor,
             onClick,
         )
     }

@@ -137,7 +137,7 @@
                 android:padding="@dimen/play_icon_padding"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_play"
-                app:tint="@color/primary" />
+                app:tint="@color/on_surface" />
 
             <ImageButton
                 android:id="@+id/nextButton"

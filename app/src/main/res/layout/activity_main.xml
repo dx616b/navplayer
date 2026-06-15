@@ -7,6 +7,33 @@
     android:background="@color/bg"
     tools:context=".ui.MainActivity">
 
+    <ImageView
+        android:id="@+id/backgroundArt"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:alpha="0.22"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_cover_placeholder"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
+
+    <View
+        android:id="@+id/backgroundScrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/scrim"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
+
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="0dp"
@@ -315,7 +342,7 @@
                 android:padding="@dimen/play_icon_padding"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_play"
-                app:tint="@color/primary" />
+                app:tint="@color/on_surface" />
 
             <ImageButton
                 android:id="@+id/nextButton"

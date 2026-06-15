@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.session.MediaController
@@ -25,6 +26,16 @@ class NowPlayingActivity : AppCompatActivity() {
     private var queueAdapter: QueueAdapter? = null
     private var coverLoadJob: Job? = null
     private var coverMediaId: String? = null
+    private var currentAccent: Int = 0
+
+    private fun setupCoverStyling() {
+        val corner = resources.getDimension(R.dimen.cover_corner_radius)
+        val elevation = resources.getDimension(R.dimen.cover_elevation)
+        CoverUi.roundCover(binding.coverArt, corner, elevation)
+        val primary = ContextCompat.getColor(this, R.color.primary)
+        CoverUi.applySeekAccent(this, binding.seekBar, primary)
+        CoverUi.applyPlayPauseWhite(this, binding.playPauseButton)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +52,7 @@ class NowPlayingActivity : AppCompatActivity() {
 
         binding.closeButton.setOnClickListener { finish() }
         binding.queueList.layoutManager = LinearLayoutManager(this)
+        setupCoverStyling()
 
         binding.preButton.setOnClickListener { playerConnector.controller?.seekToPreviousMediaItem() }
         binding.playPauseButton.setOnClickListener {
@@ -213,6 +225,13 @@ class NowPlayingActivity : AppCompatActivity() {
             isCurrent = { mediaId == coverMediaId },
             apply = { binding.coverArt.setImageBitmap(it) },
             applyBackground = { binding.backgroundArt.setImageBitmap(it) },
+            applyAccent = { extracted ->
+                val accent = CoverUi.resolveAccent(this, extracted)
+                if (accent == currentAccent) return@load
+                currentAccent = accent
+                CoverUi.applySeekAccent(this, binding.seekBar, accent)
+                CoverUi.applyPlayPauseWhite(this, binding.playPauseButton)
+            },
         )
     }
 

@@ -32,6 +32,7 @@ class MainActivity : AppCompatActivity() {
     private var playlistAdapter: PlaylistAdapter? = null
     private var coverLoadJob: Job? = null
     private var coverMediaId: String? = null
+    private var currentAccent: Int = 0
     private var playlistTracksJob: Job? = null
     private var randomLoadJob: Job? = null
     private var playbackAppendJob: Job? = null
@@ -130,8 +131,18 @@ class MainActivity : AppCompatActivity() {
         }
 
         updateSettingsHint()
+        setupCoverStyling()
         applyDrivingMode()
         loadPlaylists()
+    }
+
+    private fun setupCoverStyling() {
+        val corner = resources.getDimension(R.dimen.cover_corner_radius)
+        val elevation = resources.getDimension(R.dimen.cover_elevation)
+        CoverUi.roundCover(binding.coverArt, corner, elevation)
+        val primary = ContextCompat.getColor(this, R.color.primary)
+        CoverUi.applySeekAccent(this, binding.seekBar, primary)
+        CoverUi.applyPlayPauseWhite(this, binding.playPauseButton)
     }
 
     override fun onStart() {
@@ -214,12 +225,26 @@ class MainActivity : AppCompatActivity() {
     private fun updatePlayerChrome(hasQueue: Boolean) {
         binding.playingChip.isVisible = hasQueue
         binding.expandHint.isVisible = hasQueue
+        binding.backgroundArt.isVisible = hasQueue
+        binding.backgroundScrim.isVisible = hasQueue
         binding.playingChip.text = if (playingRandom) {
             getString(R.string.playing_random)
         } else {
             getString(R.string.playing)
         }
         binding.playerBarSeekRow.isVisible = hasQueue
+        if (!hasQueue) {
+            currentAccent = 0
+            CoverUi.resetPlayerAccent(
+                this,
+                binding.playerBar,
+                binding.seekBar,
+                binding.playPauseButton,
+                binding.playingChip,
+            )
+            playlistAdapter?.accentColor = 0
+            binding.backgroundArt.setImageResource(R.drawable.ic_cover_placeholder)
+        }
     }
 
     private fun updatePlayPauseIcon(playing: Boolean) {
@@ -248,6 +273,21 @@ class MainActivity : AppCompatActivity() {
             maxSidePx = px,
             isCurrent = { mediaId == coverMediaId },
             apply = { binding.coverArt.setImageBitmap(it) },
+            applyBackground = { binding.backgroundArt.setImageBitmap(it) },
+            applyAccent = { extracted ->
+                val accent = CoverUi.resolveAccent(this, extracted)
+                if (accent == currentAccent) return@load
+                currentAccent = accent
+                CoverUi.applyPlayerAccent(
+                    this,
+                    accent,
+                    binding.playerBar,
+                    binding.seekBar,
+                    binding.playPauseButton,
+                    binding.playingChip,
+                )
+                playlistAdapter?.accentColor = accent
+            },
         )
     }
 
@@ -294,6 +334,7 @@ class MainActivity : AppCompatActivity() {
             }
         }.also {
             it.playingPlaylistId = playingPlaylistId
+            it.accentColor = currentAccent
             playlistAdapter = it
         }
         binding.playlistList.adapter = adapter

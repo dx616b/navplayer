@@ -21,6 +21,7 @@ object CoverArtLoader {
         isCurrent: () -> Boolean,
         apply: (Bitmap) -> Unit,
         applyBackground: ((Bitmap) -> Unit)? = null,
+        applyAccent: ((Int) -> Unit)? = null,
     ): Job = scope.launch {
         var file = cachedCoverArtFile(subsonic, config, coverArtId, size)
         if (file == null) {
@@ -32,15 +33,17 @@ object CoverArtLoader {
         val decoded = withContext(Dispatchers.Default) {
             val cover = decode(file, maxSidePx, lowMemory) ?: return@withContext null
             val background = if (applyBackground != null) {
-                CoverArtBitmap.decodeBlurredBackground(file)
+                CoverArtBitmap.blurFromDecoded(cover)
             } else {
                 null
             }
-            cover to background
+            val accent = if (applyAccent != null) CoverAccent.fromBitmap(cover) else 0
+            Triple(cover, background, accent)
         } ?: return@launch
         if (!isCurrent()) return@launch
         apply(decoded.first)
         decoded.second?.let { applyBackground?.invoke(it) }
+        if (applyAccent != null) applyAccent.invoke(decoded.third)
     }
 
     suspend fun loadFile(
