@@ -35,6 +35,7 @@ class PlaybackService : MediaSessionService() {
     private var randomMode = false
     private var isPrefetchingRandom = false
     private var consecutivePlayErrors = 0
+    private var activeQueueGeneration: Long = 0L
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -66,13 +67,15 @@ class PlaybackService : MediaSessionService() {
             .setAllowCrossProtocolRedirects(true)
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
         val loadControl = DefaultLoadControl.Builder()
+            // Head units stream over cellular/LTE — tuned for one track at a time, not whole queue.
             .setBufferDurationsMs(
-                MIN_BUFFER_MS,
-                MAX_BUFFER_MS,
-                BUFFER_FOR_PLAYBACK_MS,
-                BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
+                STREAMING_MIN_BUFFER_MS,
+                STREAMING_MAX_BUFFER_MS,
+                STREAMING_BUFFER_FOR_PLAYBACK_MS,
+                STREAMING_BUFFER_AFTER_REBUFFER_MS,
             )
-            .setPrioritizeTimeOverSizeThresholds(true)
+            .setPrioritizeTimeOverSizeThresholds(false)
+            .setBackBuffer(BACK_BUFFER_MS, false)
             .build()
 
         val exo = ExoPlayer.Builder(this)
@@ -103,11 +106,28 @@ class PlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val app = application as NavPlayerApp
         when (intent?.action) {
             ACTION_SET_QUEUE -> {
                 randomMode = intent.getBooleanExtra(EXTRA_RANDOM_MODE, false)
-                val tracks = (application as NavPlayerApp).playbackQueue.take().orEmpty()
+                val generation = intent.getLongExtra(EXTRA_QUEUE_GENERATION, -1L)
+                val tracks = app.playbackQueue.takeStart(generation).orEmpty()
+                if (tracks.isEmpty()) {
+                    return super.onStartCommand(intent, flags, startId)
+                }
+                activeQueueGeneration = generation
                 playQueue(tracks, replace = true)
+            }
+            ACTION_APPEND_QUEUE -> {
+                val generation = intent.getLongExtra(EXTRA_QUEUE_GENERATION, -1L)
+                if (generation != activeQueueGeneration) {
+                    return super.onStartCommand(intent, flags, startId)
+                }
+                val tracks = app.playbackQueue.takeAppend(generation).orEmpty()
+                if (tracks.isNotEmpty()) {
+                    playQueue(tracks, replace = false)
+                }
+                app.playbackQueue.onAppendComplete(generation)
             }
             ACTION_SEEK_TO_INDEX -> {
                 val index = intent.getIntExtra(EXTRA_MEDIA_INDEX, -1)
@@ -212,24 +232,32 @@ class PlaybackService : MediaSessionService() {
         client: com.dean.navplayer.data.SubsonicClient,
         config: com.dean.navplayer.data.ServerConfig,
         tracks: List<Track>,
-    ): List<MediaItem> = tracks.map { track ->
-        MediaItem.Builder()
-            .setUri(Uri.parse(client.streamUrl(config, track.id)))
-            .setMediaId(track.id)
-            .setMediaMetadata(
-                androidx.media3.common.MediaMetadata.Builder()
-                    .setTitle(track.title)
-                    .setArtist(track.artist)
-                    .build(),
-            )
-            .build()
+    ): List<MediaItem> {
+        val streamUrls = client.streamUrls(config, tracks.map { it.id })
+        return tracks.zip(streamUrls) { track, url ->
+            MediaItem.Builder()
+                .setUri(Uri.parse(url))
+                .setMediaId(track.id)
+                .setMediaMetadata(
+                    androidx.media3.common.MediaMetadata.Builder()
+                        .setTitle(track.title)
+                        .setArtist(track.artist)
+                        .build(),
+                )
+                .build()
+        }
     }
 
     companion object {
         const val ACTION_SET_QUEUE = "com.dean.navplayer.action.SET_QUEUE"
+        const val ACTION_APPEND_QUEUE = "com.dean.navplayer.action.APPEND_QUEUE"
         const val ACTION_SEEK_TO_INDEX = "com.dean.navplayer.action.SEEK_TO_INDEX"
         const val EXTRA_RANDOM_MODE = "random_mode"
         const val EXTRA_MEDIA_INDEX = "media_index"
+        const val EXTRA_QUEUE_GENERATION = "queue_generation"
+
+        /** Tracks queued immediately; the rest append in the background. */
+        const val INITIAL_PLAYBACK_BATCH = 20
 
         private const val RANDOM_PREFETCH_REMAINING = 10
         private const val MAX_QUEUE_AHEAD = 35
@@ -237,11 +265,13 @@ class PlaybackService : MediaSessionService() {
         private const val KEEP_BEHIND_RANDOM = 15
         private const val MAX_CONSECUTIVE_PLAY_ERRORS = 5
 
-        // Tuned for always-on cellular: higher pre-buffer, longer timeouts.
+        // Cellular head-unit streaming: ~20s lookahead on current track, ~1s to start,
+        // longer recovery after rebuffer. Queue URIs only — not the full playlist.
         private const val HTTP_TIMEOUT_MS = 30_000
-        private const val MIN_BUFFER_MS = 60_000
-        private const val MAX_BUFFER_MS = 180_000
-        private const val BUFFER_FOR_PLAYBACK_MS = 2_500
-        private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 15_000
+        private const val STREAMING_MIN_BUFFER_MS = 20_000
+        private const val STREAMING_MAX_BUFFER_MS = 60_000
+        private const val STREAMING_BUFFER_FOR_PLAYBACK_MS = 1_000
+        private const val STREAMING_BUFFER_AFTER_REBUFFER_MS = 5_000
+        private const val BACK_BUFFER_MS = 0
     }
 }

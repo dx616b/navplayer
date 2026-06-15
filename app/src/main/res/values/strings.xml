@@ -13,6 +13,14 @@
     <string name="connection_ok">Connected</string>
     <string name="connection_failed">Connection failed</string>
     <string name="loading">Loading…</string>
+    <string name="loading_playlists">Loading playlists…</string>
+    <string name="loading_tracks">Loading tracks…</string>
+    <string name="loading_random">Loading random songs…</string>
+    <string name="retry">Retry</string>
+    <string name="playing">Playing</string>
+    <string name="playing_random">Random</string>
+    <string name="tap_for_more">Tap for now playing</string>
+    <string name="empty_browse_hint">Try Random or check your server settings.</string>
     <string name="no_playlists">No playlists</string>
     <string name="no_library_songs">No songs in library</string>
     <string name="no_playlist_songs">No songs in playlist</string>
@@ -27,7 +35,9 @@
     <string name="auto_start_on_boot">Start on boot</string>
     <string name="auto_start_on_boot_summary">Open NavPlayer when the head unit powers on</string>
     <string name="driving_mode">Driving mode</string>
+    <string name="driving_mode_badge">DRIVING</string>
     <string name="driving_mode_summary">Larger controls and single-column playlists</string>
     <string name="settings_hidden_hint">Long-press Playlists for settings</string>
+    <string name="loading_queue">Loading queue…</string>
     <string name="notification_channel">Playback</string>
 </resources>
