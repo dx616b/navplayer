@@ -12,9 +12,12 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -22,9 +25,13 @@ import com.dean.navplayer.NavPlayerApp
 import com.dean.navplayer.data.SubsonicClient
 import com.dean.navplayer.data.Track
 import com.dean.navplayer.ui.NowPlayingActivity
+import java.io.IOException
+import kotlin.math.min
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -35,6 +42,8 @@ class PlaybackService : MediaSessionService() {
     private var randomMode = false
     private var isPrefetchingRandom = false
     private var consecutivePlayErrors = 0
+    private var networkRetryAttempt = 0
+    private var networkRetryJob: Job? = null
     private var activeQueueGeneration: Long = 0L
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -42,12 +51,20 @@ class PlaybackService : MediaSessionService() {
     private val playerListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             consecutivePlayErrors = 0
+            networkRetryAttempt = 0
+            networkRetryJob?.cancel()
             trimPlayedMediaItems()
             maybePrefetchRandomBatch()
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            skipAfterPlayError()
+            if (isRecoverableNetworkError(error)) {
+                scheduleNetworkRetry()
+            } else {
+                networkRetryAttempt = 0
+                networkRetryJob?.cancel()
+                skipAfterPlayError()
+            }
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -66,6 +83,8 @@ class PlaybackService : MediaSessionService() {
             .setReadTimeoutMs(HTTP_TIMEOUT_MS)
             .setAllowCrossProtocolRedirects(true)
         val dataSourceFactory = DefaultDataSource.Factory(this, httpFactory)
+        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+            .setLoadErrorHandlingPolicy(StreamingLoadErrorHandlingPolicy())
         val loadControl = DefaultLoadControl.Builder()
             // Head units stream over cellular/LTE — tuned for one track at a time, not whole queue.
             .setBufferDurationsMs(
@@ -79,7 +98,7 @@ class PlaybackService : MediaSessionService() {
             .build()
 
         val exo = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(loadControl)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -145,12 +164,55 @@ class PlaybackService : MediaSessionService() {
             return
         }
         if (exo.hasNextMediaItem()) {
-            exo.seekToNextMediaItem()
-            exo.play()
+            recoverAndPlay { it.seekToNextMediaItem() }
         } else if (randomMode) {
             maybePrefetchRandomBatch()
         } else {
             exo.stop()
+        }
+    }
+
+    private fun scheduleNetworkRetry() {
+        val exo = player ?: return
+        networkRetryJob?.cancel()
+        networkRetryAttempt++
+        val delayMs = min(
+            NETWORK_RETRY_BASE_MS * (1L shl min(networkRetryAttempt - 1, 6)),
+            NETWORK_RETRY_MAX_DELAY_MS,
+        )
+        networkRetryJob = serviceScope.launch {
+            delay(delayMs)
+            val p = player ?: return@launch
+            val index = p.currentMediaItemIndex
+            if (index !in 0 until p.mediaItemCount) return@launch
+            recoverAndPlay { it.seekTo(index, 0L) }
+        }
+    }
+
+    /** ExoPlayer is idle after an error — seek then prepare before play. */
+    private fun recoverAndPlay(seek: (ExoPlayer) -> Unit) {
+        val exo = player ?: return
+        runCatching {
+            seek(exo)
+            exo.prepare()
+            exo.play()
+        }.onFailure {
+            if (isRecoverableNetworkError(exo.playerError)) {
+                scheduleNetworkRetry()
+            } else {
+                skipAfterPlayError()
+            }
+        }
+    }
+
+    private fun isRecoverableNetworkError(error: PlaybackException?): Boolean {
+        if (error == null) return false
+        return when (error.errorCode) {
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+            PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+            -> true
+            else -> error.cause is IOException || error.cause is HttpDataSource.HttpDataSourceException
         }
     }
 
@@ -166,6 +228,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        networkRetryJob?.cancel()
         player?.removeListener(playerListener)
         mediaSession?.release()
         player?.release()
@@ -264,6 +327,9 @@ class PlaybackService : MediaSessionService() {
         private const val RANDOM_PREFETCH_BATCH_SIZE = 50
         private const val KEEP_BEHIND_RANDOM = 15
         private const val MAX_CONSECUTIVE_PLAY_ERRORS = 5
+        private const val LOADABLE_MEDIA_RETRY_COUNT = 64
+        private const val NETWORK_RETRY_BASE_MS = 2_000L
+        private const val NETWORK_RETRY_MAX_DELAY_MS = 60_000L
 
         // Cellular head-unit streaming: ~20s lookahead on current track, ~1s to start,
         // longer recovery after rebuffer. Queue URIs only — not the full playlist.
@@ -273,5 +339,18 @@ class PlaybackService : MediaSessionService() {
         private const val STREAMING_BUFFER_FOR_PLAYBACK_MS = 1_000
         private const val STREAMING_BUFFER_AFTER_REBUFFER_MS = 5_000
         private const val BACK_BUFFER_MS = 0
+    }
+
+    /** Keep retrying stream reads on transient network loss instead of failing fast. */
+    private class StreamingLoadErrorHandlingPolicy :
+        DefaultLoadErrorHandlingPolicy(LOADABLE_MEDIA_RETRY_COUNT) {
+
+        override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
+            if (!isNetworkLoadError(loadErrorInfo.exception)) return C.TIME_UNSET
+            return min(1_000L * loadErrorInfo.errorCount, 30_000L)
+        }
+
+        private fun isNetworkLoadError(cause: Throwable): Boolean =
+            cause is IOException || cause is HttpDataSource.HttpDataSourceException
     }
 }
